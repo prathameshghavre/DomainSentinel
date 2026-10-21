@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{% block title %}OSINT Domain Analyzer{% endblock %}</title>
+<title>{% block title %}DomainSentinel{% endblock %}</title>
 <style>
   body { font-family: Segoe UI, Arial, sans-serif; background: #f4f6f8; color: #1f2937; margin: 0; }
   header { background: #111827; padding: 14px 24px; }
@@ -27,7 +27,7 @@
 </style>
 </head>
 <body>
-<header><a href="{{ url_for('index') }}">OSINT Domain Analyzer</a></header>
+<header><a href="{{ url_for('index') }}">DomainSentinel</a></header>
 <main>
 {% block content %}{% endblock %}
 <p class="muted">Uses only public data (WHOIS, DNS, IP geolocation). Results are indicators, not a final verdict. For authorized and lawful use only.</p>

@@ -1,4 +1,5 @@
-# OSINT Domain Analyzer
+# DomainSentinel
+*An OSINT-based domain risk analysis tool for SOC analysts and penetration testers.*
 
 A Python tool that collects **publicly available information** about a domain
 name and produces an **explainable risk score (0-100)**. It is built to help a
@@ -67,8 +68,8 @@ Severity: **Low** (0-24), **Medium** (25-49), **High** (50-74),
 ## Installation
 
 ```
-git clone https://github.com/prathameshghavre/osint-domain-analyzer.git
-cd osint-domain-analyzer
+git clone https://github.com/prathameshghavre/DomainSentinel.git
+cd DomainSentinel
 python -m venv venv
 venv\Scripts\activate
 pip install -r requirements.txt
