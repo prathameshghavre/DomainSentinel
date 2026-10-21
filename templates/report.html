@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}Report: {{ report.domain }}{% endblock %}
+{% block content %}
+<div class="card">
+  <h2>{{ report.domain }}</h2>
+  <div class="score">{{ report.risk.score }}/100
+    <span class="badge {{ report.risk.severity|lower }}">{{ report.risk.severity }}</span>
+  </div>
+  <p class="muted">Scanned at {{ report.scanned_at }} UTC |
+    Data {{ "complete" if report.risk.data_complete else "incomplete" }}</p>
+  <a class="btn" href="{{ url_for('export_scan_json', scan_id=scan_id) }}">Export JSON</a>
+  <a class="btn" href="{{ url_for('index') }}">Back</a>
+</div>
+
+<div class="card">
+  <h2>Why this score</h2>
+  {% if report.risk.findings %}
+  <table>
+    <tr><th>Points</th><th>Finding</th><th>Why it matters</th></tr>
+    {% for f in report.risk.findings %}
+    <tr><td>+{{ f.points }}</td><td>{{ f.factor }}</td><td>{{ f.why }}</td></tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <p class="muted">No risk indicators found.</p>
+  {% endif %}
+  {% for note in report.risk.unknown %}
+  <div class="unknown">Unknown: {{ note }}</div>
+  {% endfor %}
+</div>
+
+<div class="card">
+  <h2>WHOIS</h2>
+  <table>
+    <tr><th>Registrar</th><td>{{ report.whois.registrar or "N/A" }}</td></tr>
+    <tr><th>Created</th><td>{{ report.whois.creation_date or "N/A" }}</td></tr>
+    <tr><th>Expires</th><td>{{ report.whois.expiration_date or "N/A" }}</td></tr>
+    <tr><th>Domain age (days)</th><td>{{ report.whois.domain_age_days if report.whois.domain_age_days is not none else "N/A" }}</td></tr>
+    <tr><th>Name servers</th><td>{{ report.whois.name_servers|join(", ") or "N/A" }}</td></tr>
+  </table>
+</div>
+
+<div class="card">
+  <h2>DNS records</h2>
+  <table>
+    <tr><th>A</th><td>{{ report.dns.A|join(", ") or "None" }}</td></tr>
+    <tr><th>MX</th><td>{{ report.dns.MX|join(", ") or "None" }}</td></tr>
+    <tr><th>NS</th><td>{{ report.dns.NS|join(", ") or "None" }}</td></tr>
+  </table>
+</div>
+
+<div class="card">
+  <h2>Email security</h2>
+  <table>
+    <tr><th>SPF</th><td><b>{{ report.email_security.spf.policy }}</b><br>{{ report.email_security.spf.note }}
+      {% if report.email_security.spf.record %}<br><span class="muted wrap">{{ report.email_security.spf.record }}</span>{% endif %}</td></tr>
+    <tr><th>DMARC</th><td><b>{{ report.email_security.dmarc.policy }}</b><br>{{ report.email_security.dmarc.note }}
+      {% if report.email_security.dmarc.record %}<br><span class="muted wrap">{{ report.email_security.dmarc.record }}</span>{% endif %}</td></tr>
+  </table>
+</div>
+
+<div class="card">
+  <h2>IP information</h2>
+  {% if report.ip %}
+  <table>
+    <tr><th>IP</th><td>{{ report.ip.ip }}</td></tr>
+    <tr><th>Location</th><td>{{ report.ip.city or "?" }}, {{ report.ip.region or "?" }}, {{ report.ip.country or "?" }}</td></tr>
+    <tr><th>ISP / Org</th><td>{{ report.ip.isp or "N/A" }} / {{ report.ip.organization or "N/A" }}</td></tr>
+    <tr><th>ASN</th><td>{{ report.ip.asn or "N/A" }}</td></tr>
+  </table>
+  {% if report.ip.error %}<div class="unknown">{{ report.ip.error }}</div>{% endif %}
+  {% else %}
+  <p class="muted">No IP address available for this domain.</p>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,4 @@
+python-whois==0.9.6
+dnspython==2.9.0
+requests==2.34.2
+flask==3.1.3

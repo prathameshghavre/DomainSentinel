@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+  <h2>Scan a domain</h2>
+  <form method="post" action="{{ url_for('scan') }}">
+    <input type="text" name="domain" placeholder="example.com" maxlength="253" required>
+    <button type="submit">Scan</button>
+  </form>
+  {% if error %}<div class="error">{{ error }}</div>{% endif %}
+  <p class="muted">The scan takes a few seconds (WHOIS, DNS and IP lookups).</p>
+</div>
+
+<div class="card">
+  <h2>Scan history</h2>
+  {% if history %}
+  <table>
+    <tr><th>ID</th><th>Time (UTC)</th><th>Domain</th><th>Score</th><th>Severity</th><th>Data</th></tr>
+    {% for row in history %}
+    <tr>
+      <td>{{ row.id }}</td>
+      <td>{{ row.scanned_at }}</td>
+      <td><a href="{{ url_for('view_scan', scan_id=row.id) }}">{{ row.domain }}</a></td>
+      <td>{{ row.score }}</td>
+      <td><span class="badge {{ row.severity|lower }}">{{ row.severity }}</span></td>
+      <td>{{ "Complete" if row.data_complete else "Incomplete" }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  <p><a class="btn" href="{{ url_for('export_history_csv') }}">Export history (CSV)</a></p>
+  {% else %}
+  <p class="muted">No scans yet.</p>
+  {% endif %}
+</div>
+{% endblock %}
