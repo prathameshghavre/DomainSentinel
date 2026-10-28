@@ -7,6 +7,7 @@ from osint.whois_lookup import get_whois_info
 from osint.dns_lookup import get_dns_records
 from osint.email_security import get_email_security
 from osint.ip_lookup import get_ip_info
+from osint.lookalike import check_lookalike
 from osint.risk_engine import calculate_risk
 
 
@@ -41,7 +42,8 @@ def scan_domain(raw_domain):
     if dns_data["A"]:
         ip_data = get_ip_info(dns_data["A"][0])
 
-    risk = calculate_risk(whois_data, dns_data, email_data)
+    lookalike = check_lookalike(cleaned)
+    risk = calculate_risk(whois_data, dns_data, email_data, lookalike)
 
     return {
         "ok": True,
@@ -51,6 +53,7 @@ def scan_domain(raw_domain):
         "dns": dns_data,
         "email_security": email_data,
         "ip": ip_data,
+        "lookalike": lookalike,
         "risk": risk,
         "error": None,
     }

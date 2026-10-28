@@ -30,6 +30,21 @@
 </div>
 
 <div class="card">
+  <h2>Look-alike check</h2>
+  {% if report.lookalike and report.lookalike.suspected_brand %}
+  <div class="unknown">Warning: this name looks like
+    <b>{{ report.lookalike.suspected_brand }}</b> ({{ report.lookalike.technique }}).</div>
+  <p>{{ report.lookalike.why }}</p>
+  {% elif report.lookalike %}
+  <p>{{ report.lookalike.why }}</p>
+  {% else %}
+  <p class="muted">Not checked in this older scan.</p>
+  {% endif %}
+  <p class="muted">The name is compared with a small list of well-known brands.
+    It can raise false alarms.</p>
+</div>
+
+<div class="card">
   <h2>WHOIS</h2>
   <table>
     <tr><th>Registrar</th><td>{{ report.whois.registrar or "N/A" }}</td></tr>

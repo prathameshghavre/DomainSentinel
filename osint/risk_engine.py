@@ -37,7 +37,7 @@ def _add(findings, points, factor, why):
     findings.append({"points": points, "factor": factor, "why": why})
 
 
-def calculate_risk(whois_data, dns_data, email_data):
+def calculate_risk(whois_data, dns_data, email_data, lookalike=None):
     """Return score (0-100), severity, scored findings and unknown items."""
     findings = []
     unknown = []
@@ -57,7 +57,14 @@ def calculate_risk(whois_data, dns_data, email_data):
         _add(findings, 10, f"Domain is less than a year old ({age} days)",
              "Domains under a year old carry slightly higher risk.")
 
-    # 2. Does the domain resolve at all?
+    # 2. Look-alike of a well-known brand (brand impersonation).
+    if lookalike and lookalike.get("points"):
+        _add(findings, lookalike["points"],
+             f"Look-alike domain ({lookalike['technique']}): "
+             f"resembles {lookalike['suspected_brand']}",
+             lookalike["why"])
+
+    # 3. Does the domain resolve at all?
     if not dns_data.get("domain_exists", True):
         _add(findings, 30, "Domain does not exist (NXDOMAIN)",
              "A domain that does not resolve cannot be verified or trusted.")
@@ -72,7 +79,7 @@ def calculate_risk(whois_data, dns_data, email_data):
                 _add(findings, 5, "No mail (MX) records",
                      "The domain is not set up to receive email.")
 
-        # 3. Email authentication (SPF and DMARC).
+        # 4. Email authentication (SPF and DMARC).
         spf = email_data["spf"]
         dmarc = email_data["dmarc"]
 
