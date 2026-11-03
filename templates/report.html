@@ -1,6 +1,13 @@
 {% extends "base.html" %}
 {% block title %}Report: {{ report.domain }}{% endblock %}
 {% block content %}
+{% set verdicts = {
+  "Low": "Looks low risk. We did not find major warning signs.",
+  "Medium": "Some warning signs were found. It is worth a closer look before trusting it.",
+  "High": "Several warning signs were found. Be careful and double-check before trusting it.",
+  "Critical": "Many warning signs were found. Treat this website name as suspicious."
+} %}
+
 <div class="card">
   <h2>{{ report.domain }}</h2>
   <div class="score">{{ report.risk.score }}/100
@@ -9,11 +16,27 @@
   <p class="muted">Scanned at {{ report.scanned_at }} UTC |
     Data {{ "complete" if report.risk.data_complete else "incomplete" }}</p>
   <a class="btn" href="{{ url_for('export_scan_json', scan_id=scan_id) }}">Export JSON</a>
-  <a class="btn" href="{{ url_for('index') }}">Back</a>
+  <a class="btn btn-light" href="{{ url_for('index') }}">Scan another</a>
+</div>
+
+<div class="verdict {{ report.risk.severity|lower }}">
+  <b>In plain English:</b> {{ verdicts[report.risk.severity] }}
+  {% if report.risk.findings %}
+  <div>Main reasons:</div>
+  <ul>
+    {% for f in (report.risk.findings|sort(attribute='points', reverse=true))[:3] %}
+    <li>{{ f.factor }}</li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+  {% if not report.risk.data_complete %}
+  <div>Some information could not be collected, so this result is partial.</div>
+  {% endif %}
 </div>
 
 <div class="card">
   <h2>Why this score</h2>
+  <p class="muted">Each line shows how many points were added and why.</p>
   {% if report.risk.findings %}
   <table>
     <tr><th>Points</th><th>Finding</th><th>Why it matters</th></tr>
@@ -31,6 +54,7 @@
 
 <div class="card">
   <h2>Look-alike check</h2>
+  <p class="muted">Does the name imitate a famous brand?</p>
   {% if report.lookalike and report.lookalike.suspected_brand %}
   <div class="unknown">Warning: this name looks like
     <b>{{ report.lookalike.suspected_brand }}</b> ({{ report.lookalike.technique }}).</div>
@@ -46,6 +70,7 @@
 
 <div class="card">
   <h2>WHOIS</h2>
+  <p class="muted">The registration record: who registered the name and when.</p>
   <table>
     <tr><th>Registrar</th><td>{{ report.whois.registrar or "N/A" }}</td></tr>
     <tr><th>Created</th><td>{{ report.whois.creation_date or "N/A" }}</td></tr>
@@ -57,6 +82,7 @@
 
 <div class="card">
   <h2>DNS records</h2>
+  <p class="muted">The address book: which servers this name points to.</p>
   <table>
     <tr><th>A</th><td>{{ report.dns.A|join(", ") or "None" }}</td></tr>
     <tr><th>MX</th><td>{{ report.dns.MX|join(", ") or "None" }}</td></tr>
@@ -66,6 +92,7 @@
 
 <div class="card">
   <h2>Email security</h2>
+  <p class="muted">Rules that make it harder to send fake emails pretending to be this website.</p>
   <table>
     <tr><th>SPF</th><td><b>{{ report.email_security.spf.policy }}</b><br>{{ report.email_security.spf.note }}
       {% if report.email_security.spf.record %}<br><span class="muted wrap">{{ report.email_security.spf.record }}</span>{% endif %}</td></tr>
@@ -76,6 +103,7 @@
 
 <div class="card">
   <h2>IP information</h2>
+  <p class="muted">Where the server is and which company runs it.</p>
   {% if report.ip %}
   <table>
     <tr><th>IP</th><td>{{ report.ip.ip }}</td></tr>
