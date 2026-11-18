@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}History - DomainSentinel{% endblock %}
+{% block content %}
+<div class="head">
+  <h1>Scan history</h1>
+  <div class="actions"><a class="btn ghost" href="{{ url_for('export_history_csv') }}">Export CSV</a></div>
+</div>
+
+<form class="filters" method="get" action="{{ url_for('history_page') }}">
+  <input type="text" name="q" value="{{ q }}" placeholder="Search domain" maxlength="100">
+  <select name="severity">
+    <option value="">All severities</option>
+    {% for s in ["Low", "Medium", "High", "Critical"] %}
+    <option value="{{ s }}" {{ 'selected' if severity == s }}>{{ s }}</option>
+    {% endfor %}
+  </select>
+  <button type="submit">Filter</button>
+</form>
+
+<div class="card">
+  {% if rows %}
+  <table>
+    <tr><th>ID</th><th>Time (UTC)</th><th>Domain</th><th>Score</th><th>Severity</th><th>Data</th></tr>
+    {% for row in rows %}
+    <tr>
+      <td>{{ row.id }}</td>
+      <td>{{ row.scanned_at }}</td>
+      <td><a href="{{ url_for('view_scan', scan_id=row.id) }}">{{ row.domain }}</a></td>
+      <td>{{ row.score }}</td>
+      <td><span class="badge {{ row.severity|lower }}">{{ row.severity }}</span></td>
+      <td>{{ "Complete" if row.data_complete else "Incomplete" }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <p class="muted">No scans match this filter.</p>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,4 +1,4 @@
-"""app.py - Flask dashboard for the OSINT tool."""
+"""app.py - Flask dashboard for DomainSentinel."""
 
 import csv
 import io
@@ -6,7 +6,7 @@ import json
 
 from flask import Flask, Response, abort, redirect, render_template, request, url_for
 
-from osint.database import get_history, get_scan, init_db, save_scan
+from osint.database import get_history, get_scan, get_stats, init_db, save_scan
 from osint.scanner import scan_domain
 
 app = Flask(__name__)
@@ -26,21 +26,22 @@ def add_security_headers(response):
     return response
 
 
+def _dashboard(error=None):
+    return render_template("index.html", stats=get_stats(),
+                           history=get_history(8), error=error,
+                           active="dashboard")
+
+
 @app.route("/")
 def index():
-    return render_template("index.html", history=get_history(20), error=None)
+    return _dashboard()
 
 
 @app.route("/scan", methods=["POST"])
 def scan():
     report = scan_domain(request.form.get("domain", ""))
     if not report["ok"]:
-        return (
-            render_template(
-                "index.html", history=get_history(20), error=report["error"]
-            ),
-            400,
-        )
+        return _dashboard(error=report["error"]), 400
     scan_id = save_scan(report)
     return redirect(url_for("view_scan", scan_id=scan_id))
 
@@ -50,7 +51,22 @@ def view_scan(scan_id):
     report = get_scan(scan_id)
     if report is None:
         abort(404)
-    return render_template("report.html", report=report, scan_id=scan_id)
+    return render_template("report.html", report=report, scan_id=scan_id,
+                           active="history")
+
+
+@app.route("/history")
+def history_page():
+    severity = request.args.get("severity", "")
+    query = request.args.get("q", "").strip()[:100]
+    rows = get_history(200, severity or None, query or None)
+    return render_template("history.html", rows=rows, severity=severity,
+                           q=query, active="history")
+
+
+@app.route("/about")
+def about():
+    return render_template("about.html", active="about")
 
 
 @app.route("/scan/<int:scan_id>/export.json")

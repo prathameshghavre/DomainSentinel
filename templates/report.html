@@ -1,42 +1,46 @@
 {% extends "base.html" %}
-{% block title %}Report: {{ report.domain }}{% endblock %}
+{% block title %}Report: {{ report.domain }} - DomainSentinel{% endblock %}
 {% block content %}
 {% set verdicts = {
-  "Low": "Looks low risk. We did not find major warning signs.",
-  "Medium": "Some warning signs were found. It is worth a closer look before trusting it.",
+  "Low": "Looks low risk. No major warning signs were found.",
+  "Medium": "Some warning signs were found. Take a closer look before trusting it.",
   "High": "Several warning signs were found. Be careful and double-check before trusting it.",
-  "Critical": "Many warning signs were found. Treat this website name as suspicious."
+  "Critical": "Many warning signs were found. Treat this domain as suspicious."
 } %}
+{% set sev = report.risk.severity %}
 
-<div class="card">
-  <h2>{{ report.domain }}</h2>
-  <div class="score">{{ report.risk.score }}/100
-    <span class="badge {{ report.risk.severity|lower }}">{{ report.risk.severity }}</span>
+<div class="head">
+  <div>
+    <h1>{{ report.domain }}</h1>
+    <div class="muted">Scanned {{ report.scanned_at }} UTC | data {{ "complete" if report.risk.data_complete else "incomplete" }}</div>
   </div>
-  <p class="muted">Scanned at {{ report.scanned_at }} UTC |
-    Data {{ "complete" if report.risk.data_complete else "incomplete" }}</p>
-  <a class="btn" href="{{ url_for('export_scan_json', scan_id=scan_id) }}">Export JSON</a>
-  <a class="btn btn-light" href="{{ url_for('index') }}">Scan another</a>
+  <div class="actions">
+    <a class="btn ghost" href="{{ url_for('export_scan_json', scan_id=scan_id) }}">Export JSON</a>
+    <a class="btn ghost" href="{{ url_for('index') }}">Dashboard</a>
+  </div>
 </div>
 
-<div class="verdict {{ report.risk.severity|lower }}">
-  <b>In plain English:</b> {{ verdicts[report.risk.severity] }}
-  {% if report.risk.findings %}
-  <div>Main reasons:</div>
-  <ul>
-    {% for f in (report.risk.findings|sort(attribute='points', reverse=true))[:3] %}
-    <li>{{ f.factor }}</li>
-    {% endfor %}
-  </ul>
-  {% endif %}
-  {% if not report.risk.data_complete %}
-  <div>Some information could not be collected, so this result is partial.</div>
-  {% endif %}
+<div class="card scorecard">
+  <div class="bigscore">{{ report.risk.score }}<span>/100</span></div>
+  <div class="scoreright">
+    <span class="badge {{ sev|lower }}">{{ sev }}</span>
+    <div class="bar" style="margin-top: 10px"><div class="barfill {{ sev|lower }}" style="width: {{ report.risk.score }}%"></div></div>
+    <p>{{ verdicts[sev] }}</p>
+    {% if report.risk.findings %}
+    <ul>
+      {% for f in (report.risk.findings|sort(attribute='points', reverse=true))[:3] %}
+      <li>{{ f.factor }}</li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+    {% if not report.risk.data_complete %}
+    <div class="note">Some information could not be collected, so this result is partial.</div>
+    {% endif %}
+  </div>
 </div>
 
 <div class="card">
   <h2>Why this score</h2>
-  <p class="muted">Each line shows how many points were added and why.</p>
   {% if report.risk.findings %}
   <table>
     <tr><th>Points</th><th>Finding</th><th>Why it matters</th></tr>
@@ -48,72 +52,69 @@
   <p class="muted">No risk indicators found.</p>
   {% endif %}
   {% for note in report.risk.unknown %}
-  <div class="unknown">Unknown: {{ note }}</div>
+  <div class="note">Unknown: {{ note }}</div>
   {% endfor %}
 </div>
 
-<div class="card">
-  <h2>Look-alike check</h2>
-  <p class="muted">Does the name imitate a famous brand?</p>
-  {% if report.lookalike and report.lookalike.suspected_brand %}
-  <div class="unknown">Warning: this name looks like
-    <b>{{ report.lookalike.suspected_brand }}</b> ({{ report.lookalike.technique }}).</div>
-  <p>{{ report.lookalike.why }}</p>
-  {% elif report.lookalike %}
-  <p>{{ report.lookalike.why }}</p>
-  {% else %}
-  <p class="muted">Not checked in this older scan.</p>
-  {% endif %}
-  <p class="muted">The name is compared with a small list of well-known brands.
-    It can raise false alarms.</p>
+<div class="grid2">
+  <div class="card">
+    <h2>Look-alike check</h2>
+    {% if report.lookalike and report.lookalike.suspected_brand %}
+    <div class="note">This name looks like <b>{{ report.lookalike.suspected_brand }}</b> ({{ report.lookalike.technique }}).</div>
+    <p>{{ report.lookalike.why }}</p>
+    {% elif report.lookalike %}
+    <p>{{ report.lookalike.why }}</p>
+    {% else %}
+    <p class="muted">Not checked in this older scan.</p>
+    {% endif %}
+    <p class="muted">Compared with a small list of famous brands. It can raise false alarms.</p>
+  </div>
+
+  <div class="card">
+    <h2>WHOIS</h2>
+    <table class="kv">
+      <tr><th>Registrar</th><td>{{ report.whois.registrar or "N/A" }}</td></tr>
+      <tr><th>Created</th><td>{{ report.whois.creation_date or "N/A" }}</td></tr>
+      <tr><th>Expires</th><td>{{ report.whois.expiration_date or "N/A" }}</td></tr>
+      <tr><th>Age (days)</th><td>{{ report.whois.domain_age_days if report.whois.domain_age_days is not none else "N/A" }}</td></tr>
+      <tr><th>Name servers</th><td class="wrap">{{ report.whois.name_servers|join(", ") or "N/A" }}</td></tr>
+    </table>
+  </div>
 </div>
 
-<div class="card">
-  <h2>WHOIS</h2>
-  <p class="muted">The registration record: who registered the name and when.</p>
-  <table>
-    <tr><th>Registrar</th><td>{{ report.whois.registrar or "N/A" }}</td></tr>
-    <tr><th>Created</th><td>{{ report.whois.creation_date or "N/A" }}</td></tr>
-    <tr><th>Expires</th><td>{{ report.whois.expiration_date or "N/A" }}</td></tr>
-    <tr><th>Domain age (days)</th><td>{{ report.whois.domain_age_days if report.whois.domain_age_days is not none else "N/A" }}</td></tr>
-    <tr><th>Name servers</th><td>{{ report.whois.name_servers|join(", ") or "N/A" }}</td></tr>
-  </table>
-</div>
+<div class="grid2">
+  <div class="card">
+    <h2>DNS records</h2>
+    <table class="kv">
+      <tr><th>A</th><td class="wrap">{{ report.dns.A|join(", ") or "None" }}</td></tr>
+      <tr><th>MX</th><td class="wrap">{{ report.dns.MX|join(", ") or "None" }}</td></tr>
+      <tr><th>NS</th><td class="wrap">{{ report.dns.NS|join(", ") or "None" }}</td></tr>
+    </table>
+  </div>
 
-<div class="card">
-  <h2>DNS records</h2>
-  <p class="muted">The address book: which servers this name points to.</p>
-  <table>
-    <tr><th>A</th><td>{{ report.dns.A|join(", ") or "None" }}</td></tr>
-    <tr><th>MX</th><td>{{ report.dns.MX|join(", ") or "None" }}</td></tr>
-    <tr><th>NS</th><td>{{ report.dns.NS|join(", ") or "None" }}</td></tr>
-  </table>
+  <div class="card">
+    <h2>IP information</h2>
+    {% if report.ip %}
+    <table class="kv">
+      <tr><th>IP</th><td>{{ report.ip.ip }}</td></tr>
+      <tr><th>Location</th><td>{{ report.ip.city or "?" }}, {{ report.ip.region or "?" }}, {{ report.ip.country or "?" }}</td></tr>
+      <tr><th>ISP / Org</th><td>{{ report.ip.isp or "N/A" }} / {{ report.ip.organization or "N/A" }}</td></tr>
+      <tr><th>ASN</th><td>{{ report.ip.asn or "N/A" }}</td></tr>
+    </table>
+    {% if report.ip.error %}<div class="note">{{ report.ip.error }}</div>{% endif %}
+    {% else %}
+    <p class="muted">No IP address available for this domain.</p>
+    {% endif %}
+  </div>
 </div>
 
 <div class="card">
   <h2>Email security</h2>
-  <p class="muted">Rules that make it harder to send fake emails pretending to be this website.</p>
-  <table>
-    <tr><th>SPF</th><td><b>{{ report.email_security.spf.policy }}</b><br>{{ report.email_security.spf.note }}
+  <table class="kv">
+    <tr><th>SPF</th><td><b>{{ report.email_security.spf.policy }}</b> - {{ report.email_security.spf.note }}
       {% if report.email_security.spf.record %}<br><span class="muted wrap">{{ report.email_security.spf.record }}</span>{% endif %}</td></tr>
-    <tr><th>DMARC</th><td><b>{{ report.email_security.dmarc.policy }}</b><br>{{ report.email_security.dmarc.note }}
+    <tr><th>DMARC</th><td><b>{{ report.email_security.dmarc.policy }}</b> - {{ report.email_security.dmarc.note }}
       {% if report.email_security.dmarc.record %}<br><span class="muted wrap">{{ report.email_security.dmarc.record }}</span>{% endif %}</td></tr>
   </table>
-</div>
-
-<div class="card">
-  <h2>IP information</h2>
-  <p class="muted">Where the server is and which company runs it.</p>
-  {% if report.ip %}
-  <table>
-    <tr><th>IP</th><td>{{ report.ip.ip }}</td></tr>
-    <tr><th>Location</th><td>{{ report.ip.city or "?" }}, {{ report.ip.region or "?" }}, {{ report.ip.country or "?" }}</td></tr>
-    <tr><th>ISP / Org</th><td>{{ report.ip.isp or "N/A" }} / {{ report.ip.organization or "N/A" }}</td></tr>
-    <tr><th>ASN</th><td>{{ report.ip.asn or "N/A" }}</td></tr>
-  </table>
-  {% if report.ip.error %}<div class="unknown">{{ report.ip.error }}</div>{% endif %}
-  {% else %}
-  <p class="muted">No IP address available for this domain.</p>
-  {% endif %}
 </div>
 {% endblock %}

@@ -1,7 +1,7 @@
 """database.py - Store scan history in a local SQLite database.
 
-All queries use parameter placeholders (?) and never string formatting,
-so user input cannot change the SQL (protection against SQL injection).
+Every value that comes from a user goes into a query through a ? placeholder.
+The only parts of a query built as text are fixed fragments written in this file.
 """
 
 import json
@@ -10,6 +10,7 @@ from contextlib import closing
 from pathlib import Path
 
 DB_PATH = Path(__file__).resolve().parent.parent / "osint_scans.db"
+SEVERITIES = ("Low", "Medium", "High", "Critical")
 
 
 def _connect():
@@ -55,14 +56,24 @@ def save_scan(report):
         return cursor.lastrowid
 
 
-def get_history(limit=50):
-    """Return the most recent scans (newest first) as a list of dicts."""
+def get_history(limit=50, severity=None, query=None):
+    """Return recent scans (newest first), optionally filtered."""
+    sql = ("SELECT id, scanned_at, domain, score, severity, data_complete "
+           "FROM scans")
+    conditions, params = [], []
+    if severity in SEVERITIES:
+        conditions.append("severity = ?")
+        params.append(severity)
+    if query:
+        conditions.append("domain LIKE ?")
+        params.append(f"%{query}%")
+    if conditions:
+        sql += " WHERE " + " AND ".join(conditions)
+    sql += " ORDER BY id DESC LIMIT ?"
+    params.append(limit)
+
     with closing(_connect()) as conn:
-        rows = conn.execute(
-            "SELECT id, scanned_at, domain, score, severity, data_complete "
-            "FROM scans ORDER BY id DESC LIMIT ?",
-            (limit,),
-        ).fetchall()
+        rows = conn.execute(sql, params).fetchall()
     return [dict(row) for row in rows]
 
 
@@ -73,3 +84,30 @@ def get_scan(scan_id):
             "SELECT report_json FROM scans WHERE id = ?", (scan_id,)
         ).fetchone()
     return json.loads(row["report_json"]) if row else None
+
+
+def get_stats():
+    """Numbers for the dashboard cards and charts."""
+    with closing(_connect()) as conn:
+        total = conn.execute("SELECT COUNT(*) FROM scans").fetchone()[0]
+        average = conn.execute("SELECT AVG(score) FROM scans").fetchone()[0]
+        rows = conn.execute(
+            "SELECT severity, COUNT(*) AS n FROM scans GROUP BY severity"
+        ).fetchall()
+        alerts = conn.execute(
+            "SELECT id, scanned_at, domain, score, severity FROM scans "
+            "WHERE severity IN ('High', 'Critical') ORDER BY id DESC LIMIT 5"
+        ).fetchall()
+
+    counts = {level: 0 for level in SEVERITIES}
+    for row in rows:
+        if row["severity"] in counts:
+            counts[row["severity"]] = row["n"]
+
+    return {
+        "total": total,
+        "average": round(average or 0),
+        "counts": counts,
+        "high_risk": counts["High"] + counts["Critical"],
+        "alerts": [dict(alert) for alert in alerts],
+    }

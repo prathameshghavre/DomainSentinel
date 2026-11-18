@@ -1,55 +1,65 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="card">
-  <h2>Check if a website name looks risky</h2>
-  <p>Type a website name (like <b>example.com</b>). DomainSentinel looks up public
-    information about it and gives a risk score from 0 to 100, with the reasons.</p>
-  <form method="post" action="{{ url_for('scan') }}">
-    <input type="text" name="domain" placeholder="example.com" maxlength="253" required>
-    <button type="submit">Scan</button>
-  </form>
-  {% if error %}<div class="error">{{ error }}</div>{% endif %}
-  <p class="muted">A scan takes a few seconds. Or try an example with one click:</p>
+{% if error %}<div class="alert error">{{ error }}</div>{% endif %}
+<h1>Dashboard</h1>
+
+<div class="stats">
+  <div class="stat"><div class="label">Total scans</div><div class="value">{{ stats.total }}</div></div>
+  <div class="stat"><div class="label">High-risk domains</div><div class="value c-high">{{ stats.high_risk }}</div></div>
+  <div class="stat"><div class="label">Average score</div><div class="value">{{ stats.average }}</div></div>
+  <div class="stat"><div class="label">Low risk</div><div class="value c-low">{{ stats.counts.Low }}</div></div>
+</div>
+
+<div class="grid2">
+  <div class="card">
+    <h2>Risk distribution</h2>
+    {% for level in ["Low", "Medium", "High", "Critical"] %}
+    {% set n = stats.counts[level] %}
+    {% set pct = ((n * 100 / stats.total)|round|int) if stats.total else 0 %}
+    <div class="barrow">
+      <span class="barlabel">{{ level }}</span>
+      <div class="bar"><div class="barfill {{ level|lower }}" style="width: {{ pct }}%"></div></div>
+      <span class="barnum">{{ n }}</span>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="card">
+    <h2>Latest alerts (High and Critical)</h2>
+    {% if stats.alerts %}
+    <table>
+      {% for a in stats.alerts %}
+      <tr>
+        <td><a href="{{ url_for('view_scan', scan_id=a.id) }}">{{ a.domain }}</a></td>
+        <td>{{ a.score }}</td>
+        <td><span class="badge {{ a.severity|lower }}">{{ a.severity }}</span></td>
+      </tr>
+      {% endfor %}
+    </table>
+    {% else %}
+    <p class="muted">No high-risk domains yet.</p>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card examples">
+  <h2>Try an example</h2>
   {% for example in ["google.com", "g00gle.com", "example.com"] %}
-  <form class="inline-form" method="post" action="{{ url_for('scan') }}">
+  <form method="post" action="{{ url_for('scan') }}">
     <input type="hidden" name="domain" value="{{ example }}">
-    <button class="btn-light" type="submit">{{ example }}</button>
+    <button class="ghost" type="submit">{{ example }}</button>
   </form>
   {% endfor %}
-  <p class="muted"><b>g00gle.com</b> is a look-alike of google.com (zeros instead of o),
-    so it shows how a warning looks.</p>
+  <p class="muted">g00gle.com uses zeros instead of the letter o, so it shows what a look-alike warning looks like.</p>
 </div>
 
 <div class="card">
-  <h2>How it works</h2>
-  <ol class="steps">
-    <li><span class="num">1</span><br><b>Enter a website name</b><br>Only the name, like example.com.</li>
-    <li><span class="num">2</span><br><b>It checks public records</b><br>Registration, address, email rules and server location.</li>
-    <li><span class="num">3</span><br><b>It adds up warning signs</b><br>The result is a score from 0 (safe) to 100 (very risky).</li>
-    <li><span class="num">4</span><br><b>You get a clear report</b><br>Every point of the score comes with a reason.</li>
-  </ol>
-</div>
-
-<div class="card">
-  <h2>What it checks</h2>
-  <ul>
-    <li><b>Age of the website name:</b> brand new names are often used in scams.</li>
-    <li><b>Look-alike names:</b> names that imitate famous brands, like paypa1.com.</li>
-    <li><b>Does it exist:</b> whether the name points to a real server.</li>
-    <li><b>Email protection:</b> whether fake emails can easily pretend to come from it.</li>
-    <li><b>Server location:</b> which country and company run the server.</li>
-    <li><b>Input safety:</b> only real website names are accepted, nothing else.</li>
-  </ul>
-</div>
-
-<div class="card">
-  <h2>Scan history</h2>
+  <h2>Recent scans</h2>
   {% if history %}
   <table>
-    <tr><th>ID</th><th>Time (UTC)</th><th>Domain</th><th>Score</th><th>Severity</th><th>Data</th></tr>
+    <tr><th>Time (UTC)</th><th>Domain</th><th>Score</th><th>Severity</th><th>Data</th></tr>
     {% for row in history %}
     <tr>
-      <td>{{ row.id }}</td>
       <td>{{ row.scanned_at }}</td>
       <td><a href="{{ url_for('view_scan', scan_id=row.id) }}">{{ row.domain }}</a></td>
       <td>{{ row.score }}</td>
@@ -58,25 +68,9 @@
     </tr>
     {% endfor %}
   </table>
-  <p><a class="btn" href="{{ url_for('export_history_csv') }}">Export history (CSV)</a></p>
+  <p><a href="{{ url_for('history_page') }}">View all history</a></p>
   {% else %}
-  <p class="muted">No scans yet.</p>
+  <p class="muted">No scans yet. Enter a domain in the box at the top.</p>
   {% endif %}
-</div>
-
-<div class="card">
-  <h2>What do these words mean?</h2>
-  <dl>
-    <dt>WHOIS</dt>
-    <dd>The registration record of a website name: who registered it, when, and with which company.</dd>
-    <dt>DNS</dt>
-    <dd>The internet's address book. It tells which server a website name points to.</dd>
-    <dt>SPF and DMARC</dt>
-    <dd>Email rules a website owner can set so that fake emails pretending to be from them are blocked or marked.</dd>
-    <dt>Look-alike domain</dt>
-    <dd>A name that imitates a famous brand with small changes, like g00gle.com or paypa1.com.</dd>
-    <dt>Risk score</dt>
-    <dd>A number from 0 to 100 that adds up warning signs. It is a hint to look closer, not a final verdict.</dd>
-  </dl>
 </div>
 {% endblock %}

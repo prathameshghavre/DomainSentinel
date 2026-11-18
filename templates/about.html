@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}About - DomainSentinel{% endblock %}
+{% block content %}
+<h1>About DomainSentinel</h1>
+
+<div class="card">
+  <h2>What it does</h2>
+  <p>DomainSentinel looks up public information about a website name and gives a risk score from 0 to 100. Every point of the score comes with a reason, so the result can be checked and explained.</p>
+</div>
+
+<div class="card">
+  <h2>How it works</h2>
+  <ol class="steps">
+    <li><span class="num">1</span><br><b>Enter a website name</b><br>Only the name, like example.com.</li>
+    <li><span class="num">2</span><br><b>It checks public records</b><br>Registration, address, email rules and server location.</li>
+    <li><span class="num">3</span><br><b>It adds up warning signs</b><br>The score runs from 0 (safe) to 100 (very risky).</li>
+    <li><span class="num">4</span><br><b>You get a clear report</b><br>Each point has a reason.</li>
+  </ol>
+</div>
+
+<div class="card">
+  <h2>What it checks</h2>
+  <ul>
+    <li><b>Age of the name:</b> brand new names are often used in scams.</li>
+    <li><b>Look-alike names:</b> names that imitate famous brands, like paypa1.com.</li>
+    <li><b>Does it exist:</b> whether the name points to a real server.</li>
+    <li><b>Email protection:</b> whether fake emails can easily pretend to come from it.</li>
+    <li><b>Server location:</b> which country and company run the server.</li>
+  </ul>
+</div>
+
+<div class="card">
+  <h2>Words explained</h2>
+  <dl>
+    <dt>WHOIS</dt><dd>The registration record of a website name: who registered it, when, and with which company.</dd>
+    <dt>DNS</dt><dd>The internet's address book. It tells which server a name points to.</dd>
+    <dt>SPF and DMARC</dt><dd>Email rules that help block or mark fake emails pretending to come from a website.</dd>
+    <dt>Look-alike domain</dt><dd>A name that imitates a famous brand with small changes, like g00gle.com.</dd>
+    <dt>Risk score</dt><dd>A number from 0 to 100 that adds up warning signs. It is a hint to look closer, not a final verdict.</dd>
+  </dl>
+</div>
+
+<div class="card">
+  <h2>Limits</h2>
+  <ul>
+    <li>The point values are my own choices, so the score is an indicator, not a verdict.</li>
+    <li>The look-alike check knows only 17 brands.</li>
+    <li>Free WHOIS and IP services can return empty data. The tool then shows it as unknown.</li>
+    <li>The tool is passive: it reads public records and never visits the scanned website.</li>
+  </ul>
+</div>
+{% endblock %}
