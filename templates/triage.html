@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}Triage - DomainSentinel{% endblock %}
+{% block content %}
+{% set sample %}From: PayPal Security <alert@paypa1.com>
+Reply-To: help-desk@gmail.com
+Return-Path: <bounce@mailer-service.net>
+Subject: Urgent: verify your account
+
+Dear customer, we noticed unusual activity on your account.
+Please verify now: hxxps://paypal-secure-login[.]com/verify
+or sign in here: https://g00gle.com/login
+Questions? Write to support@paypa1.com
+{% endset %}
+
+<h1>Email and bulk triage</h1>
+<p class="muted">Paste a suspicious email (with headers if you have them) or a list of domains. DomainSentinel finds every domain in the text, scans each one and ranks them by risk. It only reads the text and never opens a link. Up to 15 domains per run.</p>
+
+{% if error %}<div class="alert error">{{ error }}</div>{% endif %}
+
+<div class="card">
+  <form method="post" action="{{ url_for('triage') }}">
+    <textarea name="text" required maxlength="50000" placeholder="Paste the email text, or one domain per line"
+      style="width:100%;min-height:220px;background:#0b1220;color:#e5e7eb;border:1px solid #1f2a44;border-radius:8px;padding:10px;font-family:Consolas,monospace;font-size:13px">{{ text }}</textarea>
+    <div style="margin-top:10px">
+      <button type="submit">Analyze</button>
+    </div>
+  </form>
+  <form method="post" action="{{ url_for('triage') }}" style="margin-top:8px">
+    <input type="hidden" name="text" value="{{ sample }}">
+    <button class="ghost" type="submit">Try a sample phishing email</button>
+  </form>
+  <p class="muted">Scanning can take up to a minute. Never click links from a real phishing email yourself.</p>
+</div>
+
+{% if result %}
+<div class="stats">
+  <div class="stat"><div class="label">Domains found</div><div class="value">{{ result.rows|length }}</div></div>
+  <div class="stat"><div class="label">High-risk</div><div class="value c-high">{{ result.high }}</div></div>
+  <div class="stat"><div class="label">Worst severity</div><div class="value"><span class="badge {{ result.worst|lower }}">{{ result.worst }}</span></div></div>
+</div>
+
+{% if result.truncated %}
+<div class="note">Only the first 15 domains were scanned. {{ result.truncated }} more were skipped.</div>
+{% endif %}
+
+{% if result.headers.domains %}
+<div class="card">
+  <h2>Email header check</h2>
+  <table class="kv">
+    {% for name, domain in result.headers.domains.items() %}
+    <tr><th>{{ name }}</th><td>{{ domain }}</td></tr>
+    {% endfor %}
+  </table>
+  {% for f in result.headers.findings %}
+  <div class="note"><b>{{ f.header }}:</b> {{ f.message }}</div>
+  {% endfor %}
+  {% if not result.headers.findings %}
+  <p class="muted">The sender domains match. No header warning.</p>
+  {% endif %}
+</div>
+{% endif %}
+
+<div class="card">
+  <h2>Domains ranked by risk</h2>
+  <table>
+    <tr><th>Domain</th><th>Found in</th><th>Score</th><th>Severity</th><th>Main reason</th><th>Data</th></tr>
+    {% for r in result.rows %}
+    <tr>
+      <td><a href="{{ url_for('view_scan', scan_id=r.scan_id) }}">{{ r.domain }}</a></td>
+      <td>{{ r.sources|join(', ') }}</td>
+      <td>{{ r.score }}</td>
+      <td><span class="badge {{ r.severity|lower }}">{{ r.severity }}</span></td>
+      <td>{{ r.reason }}</td>
+      <td>{{ "Complete" if r.complete else "Incomplete" }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endif %}
+{% endblock %}

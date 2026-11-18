@@ -3,14 +3,20 @@
 import csv
 import io
 import json
+from concurrent.futures import ThreadPoolExecutor
 
 from flask import Flask, Response, abort, redirect, render_template, request, url_for
 
 from osint.database import get_history, get_scan, get_stats, init_db, save_scan
+from osint.extractor import analyze_headers, extract_domains
 from osint.scanner import scan_domain
 
 app = Flask(__name__)
-app.config["MAX_CONTENT_LENGTH"] = 16 * 1024  # reject unusually large requests
+app.config["MAX_CONTENT_LENGTH"] = 128 * 1024  # pasted emails can be long, but are limited
+
+SEVERITY_ORDER = {"Low": 0, "Medium": 1, "High": 2, "Critical": 3}
+MAX_TEXT_CHARS = 50000
+SCAN_WORKERS = 4
 
 init_db()
 
@@ -44,6 +50,53 @@ def scan():
         return _dashboard(error=report["error"]), 400
     scan_id = save_scan(report)
     return redirect(url_for("view_scan", scan_id=scan_id))
+
+
+@app.route("/triage", methods=["GET", "POST"])
+def triage():
+    if request.method == "GET":
+        return render_template("triage.html", active="triage",
+                               result=None, text="", error=None)
+
+    text = request.form.get("text", "")[:MAX_TEXT_CHARS]
+    extracted = extract_domains(text)
+    if not extracted["domains"]:
+        return render_template(
+            "triage.html", active="triage", result=None, text=text,
+            error="No domain names were found in this text."), 400
+
+    # Network lookups run in parallel; database writes stay in this thread.
+    names = [item["domain"] for item in extracted["domains"]]
+    with ThreadPoolExecutor(max_workers=SCAN_WORKERS) as pool:
+        reports = list(pool.map(scan_domain, names))
+
+    rows = []
+    for item, report in zip(extracted["domains"], reports):
+        if not report["ok"]:
+            continue
+        findings = sorted(report["risk"]["findings"],
+                          key=lambda f: f["points"], reverse=True)
+        rows.append({
+            "domain": item["domain"],
+            "sources": item["sources"],
+            "score": report["risk"]["score"],
+            "severity": report["risk"]["severity"],
+            "reason": findings[0]["factor"] if findings else "No warning signs found",
+            "complete": report["risk"]["data_complete"],
+            "scan_id": save_scan(report),
+        })
+    rows.sort(key=lambda r: r["score"], reverse=True)
+
+    result = {
+        "rows": rows,
+        "high": sum(1 for r in rows if r["severity"] in ("High", "Critical")),
+        "worst": max((r["severity"] for r in rows),
+                     key=lambda s: SEVERITY_ORDER[s], default="Low"),
+        "truncated": extracted["truncated"],
+        "headers": analyze_headers(text),
+    }
+    return render_template("triage.html", active="triage", result=result,
+                           text=text, error=None)
 
 
 @app.route("/scan/<int:scan_id>")
